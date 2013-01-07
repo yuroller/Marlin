@@ -1,3 +1,10 @@
+DISCLAIMER:
+-----------
+<a href="https://github.com/ErikZalm/Marlin">Marlin firmware</a> modification for use with <a href="http://3dprint.elettronicain.it">3drag printer</a>.
+I am not affiliated with 3drag designers or distributors, so use this firmware at your own risk.
+This is just a hack that mostly works for me.
+Below is the original Readme.
+
 WARNING: 
 --------
 THIS IS RELEASE CANDIDATE 2 FOR MARLIN 1.0.0
