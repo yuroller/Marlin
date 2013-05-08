@@ -582,8 +582,16 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   block->active_extruder = extruder;
 
   //enable active axes
+  #ifdef COREXY
+  if((block->steps_x != 0) || (block->steps_y != 0))
+  {
+    enable_x();
+    enable_y();
+  }
+  #else
   if(block->steps_x != 0) enable_x();
   if(block->steps_y != 0) enable_y();
+  #endif
 #ifndef Z_LATE_ENABLE
   if(block->steps_z != 0) enable_z();
 #endif
@@ -895,3 +903,11 @@ void allow_cold_extrudes(bool allow)
 #endif
 }
 
+// Calculate the steps/s^2 acceleration rates, based on the mm/s^s
+void reset_acceleration_rates()
+{
+	for(int8_t i=0; i < NUM_AXIS; i++)
+        {
+        axis_steps_per_sqr_second[i] = max_acceleration_units_per_sq_second[i] * axis_steps_per_unit[i];
+        }
+}
