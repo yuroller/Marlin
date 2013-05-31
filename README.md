@@ -1,20 +1,22 @@
 DISCLAIMER:
 -----------
 This is <a href="https://github.com/ErikZalm/Marlin">Marlin firmware</a> modification for use with my <a href="http://3dprint.elettronicain.it">3drag printer</a>.
-
 I am not affiliated with 3drag designers or distributors, so use this firmware at your own risk.
-
 This is just a hack that mostly works for me.
-
 Below is the original Readme.
 
-WARNING: 
---------
-THIS IS RELEASE CANDIDATE 2 FOR MARLIN 1.0.0
+==========================
+Marlin 3D Printer Firmware
+==========================
 
-The configuration is now split in two files
-Configuration.h for the normal settings
-Configuration_adv.h for the advanced settings
+Notes: 
+-----
+
+
+
+The configuration is now split in two files:
+  Configuration.h for the normal settings
+  Configuration_adv.h for the advanced settings
 
 Gen7T is not supported.
 
@@ -56,6 +58,7 @@ Features:
 *   PID tuning
 *   CoreXY kinematics (www.corexy.com/theory.html)
 *   Configurable serial port to support connection of wireless adaptors.
+*   Automatic operation of extruder/cold-end cooling fans based on nozzle temperature
 
 The default baudrate is 250000. This baudrate has less jitter and hence errors than the usual 115200 baud, but is less supported by drivers and host-environments.
 

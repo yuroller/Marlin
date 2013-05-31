@@ -19,6 +19,19 @@
 * Implementation of the LCD display routines for a DOGM128 graphic display. These are common LCD 128x64 pixel graphic displays.
 **/
 
+#ifdef ULTIPANEL
+#define BLEN_A 0
+#define BLEN_B 1
+#define BLEN_C 2
+#define EN_A (1<<BLEN_A)
+#define EN_B (1<<BLEN_B)
+#define EN_C (1<<BLEN_C)
+#define encrot0 0
+#define encrot1 2
+#define encrot2 3
+#define encrot3 1
+#define LCD_CLICKED (buttons&EN_C)
+#endif
 
 // CHANGE_DE begin ***
 #include <U8glib.h>	// DE_U8glib
@@ -88,11 +101,11 @@ static void lcd_implementation_init()
 	u8g.setRot90();	// Rotate screen by 90°
 #endif
 
-#ifdef LCD_SCREEN_ROT_180;
+#ifdef LCD_SCREEN_ROT_180
 	u8g.setRot180();	// Rotate screen by 180°
 #endif
 
-#ifdef LCD_SCREEN_ROT_270;
+#ifdef LCD_SCREEN_ROT_270
 	u8g.setRot270();	// Rotate screen by 270°
 #endif
 
@@ -266,7 +279,7 @@ static void lcd_implementation_status_screen()
  // Fan
  u8g.setFont(FONT_STATUSMENU);
  u8g.setPrintPos(104,27);
- #if FAN_PIN > 0
+ #if defined(FAN_PIN) && FAN_PIN > -1
  u8g.print(itostr3(int((fanSpeed*100)/256 + 1)));
  u8g.print("%");
  #else
