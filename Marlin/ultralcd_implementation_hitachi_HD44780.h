@@ -13,7 +13,7 @@ extern volatile uint16_t buttons;  //an extended version of the last checked but
 #endif
 
 ////////////////////////////////////
-// Setup button and encode mappings for each panel (into 'buttons' variable)
+// Setup button and encode mappings for each panel (into 'buttons' variable
 //
 // This is just to map common functions (across different panels) onto the same 
 // macro name. The mapping is independent of whether the button is directly connected or 
@@ -128,17 +128,10 @@ extern volatile uint16_t buttons;  //an extended version of the last checked but
 // These values are independent of which pins are used for EN_A and EN_B indications
 // The rotary encoder part is also independent to the chipset used for the LCD
 #if defined(EN_A) && defined(EN_B)
-  #ifndef ULTIMAKERCONTROLLER
     #define encrot0 0
     #define encrot1 2
     #define encrot2 3
     #define encrot3 1
-  #else
-    #define encrot0 0
-    #define encrot1 1
-    #define encrot2 3
-    #define encrot3 2
-  #endif
 #endif 
 
 #endif //ULTIPANEL
@@ -180,6 +173,11 @@ extern volatile uint16_t buttons;  //an extended version of the last checked but
   #include <LiquidTWI2.h>
   #define LCD_CLASS LiquidTWI2
   LCD_CLASS lcd(LCD_I2C_ADDRESS);  
+
+#elif defined(LCD_I2C_TYPE_PCA8574)
+    #include <LiquidCrystal_I2C.h>
+    #define LCD_CLASS LiquidCrystal_I2C
+    LCD_CLASS lcd(LCD_I2C_ADDRESS, LCD_WIDTH, LCD_HEIGHT);
   
 #else
   // Standard directly connected LCD implementations
@@ -305,6 +303,10 @@ static void lcd_implementation_init()
 #elif defined(LCD_I2C_TYPE_MCP23008)
     lcd.setMCPType(LTI_TYPE_MCP23008);
     lcd.begin(LCD_WIDTH, LCD_HEIGHT);
+
+#elif defined(LCD_I2C_TYPE_PCA8574)
+      lcd.init();
+      lcd.backlight();
     
 #else
     lcd.begin(LCD_WIDTH, LCD_HEIGHT);
@@ -706,9 +708,9 @@ static void lcd_implementation_quick_feedback()
     for(int8_t i=0;i<10;i++)
     {
       WRITE(BEEPER,HIGH);
-      delay(3);
+      delayMicroseconds(100);
       WRITE(BEEPER,LOW);
-      delay(3);
+      delayMicroseconds(100);
     }
 #endif
 }
