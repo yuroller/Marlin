@@ -12,6 +12,13 @@
 // example_configurations/delta directory.
 //
 
+//===========================================================================
+//============================= SCARA Printer ===============================
+//===========================================================================
+// For a Delta printer replace the configuration files with the files in the
+// example_configurations/SCARA directory.
+//
+
 // User-specified version info of this build to display in [Pronterface, etc] terminal window during
 // startup. Implementation of an idea by Prof Braino to inform user that any changes made to this
 // build by the user have been successfully uploaded into firmware.
@@ -23,7 +30,6 @@
 // Serial port 0 is still used by the Arduino bootloader regardless of this setting.
 #define SERIAL_PORT 0
 
-// This determines the communication speed of the printer
 // This determines the communication speed of the printer
 #define BAUDRATE 250000
 
@@ -42,6 +48,7 @@
 // 33 = RAMPS 1.3 / 1.4 (Power outputs: Extruder, Fan, Bed)
 // 34 = RAMPS 1.3 / 1.4 (Power outputs: Extruder0, Extruder1, Bed)
 // 35 = RAMPS 1.3 / 1.4 (Power outputs: Extruder, Fan, Fan)
+// 36 = RAMPS 1.3 / 1.4 (Power outputs: Extruder0, Extruder1, Fan)
 // 4  = Duemilanove w/ ATMega328P pin assignment
 // 5  = Gen6
 // 51 = Gen6 deluxe
@@ -72,6 +79,7 @@
 // 301= Rambo
 // 21 = Elefu Ra Board (v3)
 // 88 = 5DPrint D8 Driver Board
+// 999 = Leapfrog
 
 #ifndef MOTHERBOARD
 #define MOTHERBOARD 62
@@ -119,6 +127,7 @@
 // 10 is 100k RS thermistor 198-961 (4.7k pullup)
 // 11 is 100k beta 3950 1% thermistor (4.7k pullup)
 // 12 is 100k 0603 SMD Vishay NTCS0603E3104FXT (4.7k pullup) (calibrated for Makibox hot bed)
+// 13 is 100k Hisens 3950  1% up to 300°C for hotend "Simple ONE " & "Hotend "All In ONE" 
 // 20 is the PT100 circuit found in the Ultimainboard V2.x
 // 60 is 100k Maker's Tool Works Kapton Bed Thermistor beta=3950
 //
@@ -132,7 +141,6 @@
 // 1010 is Pt1000 with 1k pullup (non standard)
 // 147 is Pt100 with 4k7 pullup
 // 110 is Pt100 with 1k pullup (non standard)
-// 70 is 500C thermistor for Pico hot end
 
 #define TEMP_SENSOR_0 5
 #define TEMP_SENSOR_1 0
@@ -185,7 +193,7 @@
                                   // is more then PID_FUNCTIONAL_RANGE then the PID will be shut off and the heater will be set to min/max.
   #define PID_INTEGRAL_DRIVE_MAX 255  //limit for the integral term
   #define K1 0.95 //smoothing factor within the PID
-  #define PID_dT ((OVERSAMPLENR * 8.0)/(F_CPU / 64.0 / 256.0)) //sampling period of the temperature routine
+  #define PID_dT ((OVERSAMPLENR * 10.0)/(F_CPU / 64.0 / 256.0)) //sampling period of the temperature routine
 
 // If you are using a pre-configured hotend then you can use one of the value sets by uncommenting it
 // Ultimaker
@@ -376,6 +384,7 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 //============================= Bed Auto Leveling ===========================
 
 //#define ENABLE_AUTO_BED_LEVELING // Delete the comment to enable (remove // at the start of the line)
+#define Z_PROBE_REPEATABILITY_TEST  // If not commented out, Z-Probe Repeatability test will be included if Auto Bed Leveling is Enabled.
 
 #ifdef ENABLE_AUTO_BED_LEVELING
 
@@ -436,6 +445,8 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
   #define Z_RAISE_BEFORE_PROBING 15    //How much the extruder will be raised before traveling to the first probing point.
   #define Z_RAISE_BETWEEN_PROBINGS 5  //How much the extruder will be raised when traveling from between next probing points
 
+  //#define Z_PROBE_SLED // turn on if you have a z-probe mounted on a sled like those designed by Charles Bell
+  //#define SLED_DOCKING_OFFSET 5 // the extra distance the X axis must travel to pickup the sled. 0 should be fine but you can push it further if you'd like.
 
   //If defined, the Probe servo will be turned on only during movement and then turned off to avoid jerk
   //The value is the delay to turn the servo off after powered on - depends on the servo speed; 300ms is good value, but you can try lower it.
@@ -754,6 +765,35 @@ const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 //
 //#define SERVO_ENDSTOPS {-1, -1, 0} // Servo index for X, Y, Z. Disable with -1
 //#define SERVO_ENDSTOP_ANGLES {0,0, 0,0, 70,0} // X,Y,Z Axis Extend and Retract angles
+
+/**********************************************************************\
+ * Support for a filament diameter sensor
+ * Also allows adjustment of diameter at print time (vs  at slicing)
+ * Single extruder only at this point (extruder 0)
+ * 
+ * Motherboards
+ * 34 - RAMPS1.4 - uses Analog input 5 on the AUX2 connector 
+ * 81 - Printrboard - Uses Analog input 2 on the Aux 2 connector
+ * 301 - Rambo  - uses Analog input 3
+ * Note may require analog pins to be defined for different motherboards
+ **********************************************************************/
+#define FILAMENT_SENSOR
+#define FILAMENT_SENSOR_EXTRUDER_NUM	0  //The number of the extruder that has the filament sensor (0,1,2)
+#define MEASUREMENT_DELAY_CM			14  //measurement delay in cm.  This is the distance from filament sensor to middle of barrel
+
+#define DEFAULT_NOMINAL_FILAMENT_DIA  3.0  //Enter the diameter (in mm) of the filament generally used (3.0 mm or 1.75 mm) - this is then used in the slicer software.  Used for sensor reading validation
+#define MEASURED_UPPER_LIMIT          3.30  //upper limit factor used for sensor reading validation in mm
+#define MEASURED_LOWER_LIMIT          1.90  //lower limit factor for sensor reading validation in mm
+#define MAX_MEASUREMENT_DELAY			20  //delay buffer size in bytes (1 byte = 1cm)- limits maximum measurement delay allowable (must be larger than MEASUREMENT_DELAY_CM  and lower number saves RAM)
+
+//defines used in the code
+#define DEFAULT_MEASURED_FILAMENT_DIA  DEFAULT_NOMINAL_FILAMENT_DIA  //set measured to nominal initially 
+
+
+
+
+
+
 
 #include "Configuration_adv.h"
 #include "thermistortables.h"
