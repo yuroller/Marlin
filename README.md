@@ -1,3 +1,8 @@
+NOTE: As per 21/12/2014 all stale branches have been thrown in the trash can, some where not updated in 3 years and some not in 2 years, currently we/i (boelle) suggest you use the "bug fixing branch" as we need to get sorted out any issues before we start to add more festures. A "stable" marlin is the goal
+
+NOTE1: We are doing a kind of clean up in the list of issues and pull requests, the aim is to get to a kind of state where we can stamp it stable, and of course a more updated version we stamp unstable that will need testing. For the last part we need a lot of people with different machines that are willing to test the firmware so we can stamp it as stable. If you want to help out testing go to this issue and let us know: https://github.com/ErikZalm/Marlin/issues/1209
+
+NOTE2: For submitting pull requests we ask that you PLEASE test the code first before submitting. When creating the pull request let us know what hardware you have tested on and how, just in short words. Pull requests that are not tested will likely not be merged as one slight change can risk breaking the code.
 DISCLAIMER:
 -----------
 This is <a href="https://github.com/ErikZalm/Marlin">Marlin firmware</a> modification for use with my <a href="http://3dprint.elettronicain.it">3drag printer</a>.
@@ -5,10 +10,13 @@ I am not affiliated with 3drag designers or distributors, so use this firmware a
 This is just a hack that mostly works for me.
 Below is the original Readme.
 
+NOTE3: If you have a fix don't open an issue telling about it, but test the code and submit a pull request.
+
 ==========================
 Marlin 3D Printer Firmware
 ==========================
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/2224/badge.svg)](https://scan.coverity.com/projects/2224)
+[![Travis Build Status](https://travis-ci.org/ErikZalm/Marlin.svg)](https://travis-ci.org/ErikZalm/Marlin)
 
 Marlin has a GPL license because I believe in open development.
 Please do not use this code in products (3D printers, CNC etc) that are closed source or are crippled by a patent.
@@ -60,6 +68,7 @@ Features:
 *   Automatic operation of extruder/cold-end cooling fans based on nozzle temperature
 *   RC Servo Support, specify angle or duration for continuous rotation servos.
 *   Bed Auto Leveling.
+*   Support for a filament diameter sensor, which adjusts extrusion volume
 
 The default baudrate is 250000. This baudrate has less jitter and hence errors than the usual 115200 baud, but is less supported by drivers and host-environments.
 
@@ -398,6 +407,13 @@ For example, suppose you measured the endstop position and it was 20mm to the ri
 
 That's it.. enjoy never having to calibrate your Z endstop neither leveling your bed by hand anymore ;-)
 
+Filament Sensor
+---------------
+Supports the use of a real time filament diameter sensor that measures the diameter of the filament going into the extruder and then adjusts the extrusion rate to compensate for filament that does not match what is defined in the g-code.  The diameter can also be displayed on the LCD screen. This potentially eliminates the need to measure filament diameter when changing spools of filament. Gcode becomes independent of the filament diameter. Can also compensate for changing diameter.
 
+For examples of these sensors, see: http://www.thingiverse.com/thing:454584, https://www.youmagine.com/designs/filament-diameter-sensor, http://diy3dprinting.blogspot.com/2014/01/diy-filament-diameter-sensor.html. Any sensor which produces a voltage equivalent to the diameter in mm (i.e. 1v = 1mm) can be used. This provides a very simple interface and may encourage more innovation in this area.
 
+4 new Mcodes are defined to set relevant parameters: M404, M405, M406, M407 - see above.
+
+ Implements a delay buffer to handle the transit delay between where the filament is measured and when it gets to the extruder.
 
