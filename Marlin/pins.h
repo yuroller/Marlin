@@ -655,8 +655,10 @@
     #define LED_PIN            13
   #endif
 
-  #if MB(RAMPS_13_EFB) || MB(RAMPS_13_EFF) || MB(AZTEEG_X3) || MB(AZTEEG_X3_PRO)
+  #if MB(RAMPS_13_EFB) || MB(RAMPS_13_EFF) || MB(AZTEEG_X3)
     #define FAN_PIN            9 // (Sprinter config)
+  #elif MB(AZTEEG_X3_PRO)
+    #define FAN_PIN            11 // Last Heater Pin on board
   #else
     #define FAN_PIN            4 // IO pin. Buffer needed
   #endif
@@ -904,9 +906,9 @@
   #define SCK_PIN          52
   #define MISO_PIN         50
   #define MOSI_PIN         51
-  #define MAX6675_SS       53
+  #define MAX6675_SS       66// Do not use pin 53 if there is even the remote possibility of using Dsplay/SD card
 #else
-  #define MAX6675_SS       49
+  #define MAX6675_SS       66// Do not use pin 49 as this is tied to the switch inside the SD card socket to detect if there is an SD card present
 #endif
 
 #endif // RAMPS_OLD || RAMPS_13_EFB || RAMPS_13_EEB || RAMPS_13_EFF || 3DRAG
@@ -1396,6 +1398,7 @@
 #define PS_ON_PIN          12
 #define KILL_PIN           -1
 #define SUICIDE_PIN        54  //PIN that has to be turned on right after start, to keep power flowing.
+#define SERVO0_PIN         13  // untested
 
 #ifdef ULTRA_LCD
 
@@ -1900,6 +1903,8 @@
   #define X_STOP_PIN         13
   #define Y_STOP_PIN         14
   #define Z_STOP_PIN         15
+//  #define Z_STOP_PIN         36  // For inductive sensor.
+
   #define TEMP_0_PIN          7  // Extruder / Analog pin numbering
   #define TEMP_BED_PIN        6  // Bed / Analog pin numbering
 
@@ -1910,7 +1915,6 @@
 #define SDSS               20  // PB0 - 8 in marlin env.
 #define LED_PIN            -1
 #define PS_ON_PIN          -1
-#define KILL_PIN           -1
 #define ALARM_PIN          -1
 #define SDCARDDETECT       -1
 
@@ -1929,13 +1933,24 @@
 #define LCD_PINS_D5        -1
 #define LCD_PINS_D6        -1
 #define LCD_PINS_D7        -1
-#define BTN_EN1            -1
-#define BTN_EN2            -1
-#define BTN_ENC            -1
 
+#ifdef SAV_3DLCD
 // For LCD SHIFT register LCD
-#define SR_DATA_PIN         0
-#define SR_CLK_PIN          1
+#define SR_DATA_PIN         1
+#define SR_CLK_PIN          0
+
+#define BTN_EN1            41
+#define BTN_EN2            40
+#define BTN_ENC            12
+
+#define KILL_PIN           42 // A2 = 42 - teensy = 40
+#define HOME_PIN          -1 // A4 = marlin 44 - teensy = 42
+
+#ifdef NUM_SERVOS
+  #define SERVO0_PIN       41 // In teensy's pin definition for pinMode (in Servo.cpp)
+#endif
+
+#endif
 
 #endif // SAV_MKI
 

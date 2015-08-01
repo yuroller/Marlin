@@ -61,7 +61,7 @@
 #include <SPI.h>
 #endif
 
-#define VERSION_STRING  "1.0.0"
+#define VERSION_STRING  "1.0.2"
 
 // look here for descriptions of G-codes: http://linuxcnc.org/handbook/gcode/g-code.html
 // http://objects.reprap.org/wiki/Mendel_User_Manual:_RepRapGCodes
@@ -215,6 +215,15 @@ int extruder_multiply[EXTRUDERS] = {100
     #endif
   #endif
 };
+bool volumetric_enabled = false;
+float filament_size[EXTRUDERS] = { DEFAULT_NOMINAL_FILAMENT_DIA
+  #if EXTRUDERS > 1
+      , DEFAULT_NOMINAL_FILAMENT_DIA
+    #if EXTRUDERS > 2
+       , DEFAULT_NOMINAL_FILAMENT_DIA
+    #endif
+  #endif
+};
 float volumetric_multiplier[EXTRUDERS] = {1.0
   #if EXTRUDERS > 1
     , 1.0
@@ -328,6 +337,9 @@ bool cancel_heatup = false ;
   float delay_dist=0; //delay distance counter  
   int meas_delay_cm = MEASUREMENT_DELAY_CM;  //distance delay setting
 #endif
+
+const char errormagic[] PROGMEM = "Error:";
+const char echomagic[] PROGMEM = "echo:";
 
 //===========================================================================
 //=============================Private Variables=============================
@@ -460,10 +472,20 @@ void enquecommand_P(const char *cmd)
 void setup_killpin()
 {
   #if defined(KILL_PIN) && KILL_PIN > -1
-    pinMode(KILL_PIN,INPUT);
+    SET_INPUT(KILL_PIN);
     WRITE(KILL_PIN,HIGH);
   #endif
 }
+
+// Set home pin
+void setup_homepin(void)
+{
+#if defined(HOME_PIN) && HOME_PIN > -1
+   SET_INPUT(HOME_PIN);
+   WRITE(HOME_PIN,HIGH);
+#endif
+}
+
 
 void setup_photpin()
 {
@@ -597,6 +619,7 @@ void setup()
   pinMode(SERVO0_PIN, OUTPUT);
   digitalWrite(SERVO0_PIN, LOW); // turn it off
 #endif // Z_PROBE_SLED
+  setup_homepin();
 }
 
 
@@ -1568,7 +1591,7 @@ void process_commands()
             destination[X_AXIS] = round(Z_SAFE_HOMING_X_POINT - X_PROBE_OFFSET_FROM_EXTRUDER);
             destination[Y_AXIS] = round(Z_SAFE_HOMING_Y_POINT - Y_PROBE_OFFSET_FROM_EXTRUDER);
             destination[Z_AXIS] = Z_RAISE_BEFORE_HOMING * home_dir(Z_AXIS) * (-1);    // Set destination away from bed
-            feedrate = XY_TRAVEL_SPEED;
+            feedrate = XY_TRAVEL_SPEED/60;
             current_position[Z_AXIS] = 0;
 
             plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
@@ -2809,21 +2832,7 @@ Sigma_Exit:
     #endif //BLINKM
     case 200: // M200 D<millimeters> set filament diameter and set E axis units to cubic millimeters (use S0 to set back to millimeters).
       {
-        float area = .0;
-        float radius = .0;
-        if(code_seen('D')) {
-          radius = (float)code_value() * .5;
-          if(radius == 0) {
-            area = 1;
-          } else {
-            area = M_PI * pow(radius, 2);
-          }
-        } else {
-          //reserved for setting filament diameter via UFID or filament measuring device
-          break;
-        
-          
-        }
+
         tmp_extruder = active_extruder;
         if(code_seen('T')) {
           tmp_extruder = code_value();
@@ -2833,7 +2842,32 @@ Sigma_Exit:
             break;
           }
         }
-        volumetric_multiplier[tmp_extruder] = 1 / area;
+
+        float area = .0;
+        if(code_seen('D')) {
+		  float diameter = (float)code_value();
+		  if (diameter == 0.0) {
+			// setting any extruder filament size disables volumetric on the assumption that
+			// slicers either generate in extruder values as cubic mm or as as filament feeds
+			// for all extruders
+		    volumetric_enabled = false;
+		  } else {
+            filament_size[tmp_extruder] = (float)code_value();
+			// make sure all extruders have some sane value for the filament size
+			filament_size[0] = (filament_size[0] == 0.0 ? DEFAULT_NOMINAL_FILAMENT_DIA : filament_size[0]);
+            #if EXTRUDERS > 1
+			filament_size[1] = (filament_size[1] == 0.0 ? DEFAULT_NOMINAL_FILAMENT_DIA : filament_size[1]);
+            #if EXTRUDERS > 2
+			filament_size[2] = (filament_size[2] == 0.0 ? DEFAULT_NOMINAL_FILAMENT_DIA : filament_size[2]);
+            #endif
+            #endif
+			volumetric_enabled = true;
+		  }
+        } else {
+          //reserved for setting filament diameter via UFID or filament measuring device
+          break;
+        }
+		calculate_volumetric_multipliers();
       }
       break;
     case 201: // M201
@@ -3602,7 +3636,7 @@ case 404:  //M404 Enter the nominal filament width (3mm, 1.75mm ) N<3.0> or disp
         while(!lcd_clicked()){
           cnt++;
           manage_heater();
-          manage_inactivity();
+          manage_inactivity(true);
           lcd_update();
           if(cnt==0)
           {
@@ -3943,7 +3977,14 @@ void clamp_to_software_endstops(float target[3])
   if (min_software_endstops) {
     if (target[X_AXIS] < min_pos[X_AXIS]) target[X_AXIS] = min_pos[X_AXIS];
     if (target[Y_AXIS] < min_pos[Y_AXIS]) target[Y_AXIS] = min_pos[Y_AXIS];
-    if (target[Z_AXIS] < min_pos[Z_AXIS]) target[Z_AXIS] = min_pos[Z_AXIS];
+    
+    float negative_z_offset = 0;
+    #ifdef ENABLE_AUTO_BED_LEVELING
+      if (Z_PROBE_OFFSET_FROM_EXTRUDER < 0) negative_z_offset = negative_z_offset + Z_PROBE_OFFSET_FROM_EXTRUDER;
+      if (add_homing[Z_AXIS] < 0) negative_z_offset = negative_z_offset + add_homing[Z_AXIS];
+    #endif
+    
+    if (target[Z_AXIS] < min_pos[Z_AXIS]+negative_z_offset) target[Z_AXIS] = min_pos[Z_AXIS]+negative_z_offset;
   }
 
   if (max_software_endstops) {
@@ -4291,8 +4332,20 @@ void handle_status_leds(void) {
 }
 #endif
 
-void manage_inactivity()
+void manage_inactivity(bool ignore_stepper_queue/*=false*/) //default argument set in Marlin.h
 {
+	
+#if defined(KILL_PIN) && KILL_PIN > -1
+	static int killCount = 0;   // make the inactivity button a bit less responsive
+   const int KILL_DELAY = 10000;
+#endif
+
+#if defined(HOME_PIN) && HOME_PIN > -1
+   static int homeDebounceCount = 0;   // poor man's debouncing count
+   const int HOME_DEBOUNCE_DELAY = 10000;
+#endif
+   
+	
   if(buflen < (BUFSIZE-1))
     get_command();
 
@@ -4302,7 +4355,7 @@ void manage_inactivity()
   if(stepper_inactive_time)  {
     if( (millis() - previous_millis_cmd) >  stepper_inactive_time )
     {
-      if(blocks_queued() == false) {
+      if(blocks_queued() == false && ignore_stepper_queue == false) {
         disable_x();
         disable_y();
         disable_z();
@@ -4322,9 +4375,49 @@ void manage_inactivity()
   #endif
   
   #if defined(KILL_PIN) && KILL_PIN > -1
+    
+    // Check if the kill button was pressed and wait just in case it was an accidental
+    // key kill key press
+    // -------------------------------------------------------------------------------
     if( 0 == READ(KILL_PIN) )
-      kill();
+    {
+       killCount++;
+    }
+    else if (killCount > 0)
+    {
+       killCount--;
+    }
+    // Exceeded threshold and we can confirm that it was not accidental
+    // KILL the machine
+    // ----------------------------------------------------------------
+    if ( killCount >= KILL_DELAY)
+    {
+       kill();
+    }
   #endif
+
+#if defined(HOME_PIN) && HOME_PIN > -1
+    // Check to see if we have to home, use poor man's debouncer
+    // ---------------------------------------------------------
+    if ( 0 == READ(HOME_PIN) )
+    {
+       if (homeDebounceCount == 0)
+       {
+          enquecommand_P((PSTR("G28")));
+          homeDebounceCount++;
+          LCD_ALERTMESSAGEPGM(MSG_AUTO_HOME);
+       }
+       else if (homeDebounceCount < HOME_DEBOUNCE_DELAY)
+       {
+          homeDebounceCount++;
+       }
+       else
+       {
+          homeDebounceCount = 0;
+       }
+    }
+#endif
+    
   #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
     controllerFan(); //Check if fan should be turned on to cool stepper drivers down
   #endif
@@ -4381,6 +4474,14 @@ void kill()
   SERIAL_ERROR_START;
   SERIAL_ERRORLNPGM(MSG_ERR_KILLED);
   LCD_ALERTMESSAGEPGM(MSG_KILLED);
+  
+  // FMC small patch to update the LCD before ending
+  sei();   // enable interrupts
+  for ( int i=5; i--; lcd_update())
+  {
+     delay(200);	
+  }
+  cli();   // disable interrupts
   suicide();
   while(1) { /* Intentionally left empty */ } // Wait for reset
 }
@@ -4497,5 +4598,31 @@ bool setTargetedHotend(int code){
     }
   }
   return false;
+}
+
+
+float calculate_volumetric_multiplier(float diameter) {
+	float area = .0;
+	float radius = .0;
+
+	radius = diameter * .5;
+	if (! volumetric_enabled || radius == 0) {
+		area = 1;
+	}
+	else {
+		area = M_PI * pow(radius, 2);
+	}
+
+	return 1.0 / area;
+}
+
+void calculate_volumetric_multipliers() {
+	volumetric_multiplier[0] = calculate_volumetric_multiplier(filament_size[0]);
+#if EXTRUDERS > 1
+	volumetric_multiplier[1] = calculate_volumetric_multiplier(filament_size[1]);
+#if EXTRUDERS > 2
+	volumetric_multiplier[2] = calculate_volumetric_multiplier(filament_size[2]);
+#endif
+#endif
 }
 
